@@ -1,0 +1,156 @@
+// Nutripak Admin Dashboard — Database Schema
+// PostgreSQL (Neon) + Prisma ORM
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COLLECTED
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+
+  @@index([isActive])
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  name             String
+  sku              String        @unique
+  slug             String        @unique
+  shortDescription String?
+  fullDescription  String?
+
+  // Pricing & stock (validated: price >= 0, stock >= 0)
+  price         Decimal @db.Decimal(10, 2)
+  stockQuantity Int     @default(0)
+
+  // Nutripak-specific information (optional)
+  ingredients      String?
+  benefits         String?
+  nutritionInfo    String?
+  certifications   String?
+  productSheetUrl  String?
+
+  status     ProductStatus @default(ACTIVE)
+  categoryId String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  category   Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images     ProductImage[]
+  orderItems OrderItem[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([name])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  url       String
+  alt       String?
+  isMain    Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model Order {
+  id          String  @id @default(cuid())
+  orderNumber String  @unique
+
+  // Customer / shipping information (snapshot from checkout)
+  customerName  String
+  customerPhone String
+  customerEmail String?
+  address       String
+  city          String
+  notes         String?
+
+  // Amounts (validated: >= 0, total = subtotal + deliveryCharges)
+  subtotal        Decimal @db.Decimal(10, 2)
+  deliveryCharges Decimal @db.Decimal(10, 2) @default(0)
+  total           Decimal @db.Decimal(10, 2)
+
+  // COD is the only payment method — no gateways.
+  paymentMethod String        @default("COD")
+  paymentStatus PaymentStatus @default(PENDING)
+  status        OrderStatus   @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@index([customerPhone])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String?
+
+  // Snapshots preserve order history if product data changes or is removed.
+  productName String  @db.VarChar(255)
+  sku         String
+  unitPrice   Decimal @db.Decimal(10, 2)
+  quantity    Int
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+}
