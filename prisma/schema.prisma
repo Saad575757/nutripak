@@ -104,6 +104,56 @@ model ProductImage {
   @@index([productId])
 }
 
+model Customer {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders   Order[]
+  sessions Session[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  customerId String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  topic     String?
+  message   String
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Binary image uploads stored directly in Postgres (Neon) and served
+// through /api/media/[id]. Referenced by ProductImage.url and Category.imageUrl.
+model Media {
+  id        String   @id @default(cuid())
+  filename  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model Order {
   id          String  @id @default(cuid())
   orderNumber String  @unique
@@ -126,6 +176,10 @@ model Order {
   paymentStatus PaymentStatus @default(PENDING)
   status        OrderStatus   @default(PENDING)
 
+  // Links a checkout to a registered storefront account when the buyer was signed in.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -135,6 +189,7 @@ model Order {
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([customerPhone])
+  @@index([customerId])
 }
 
 model OrderItem {

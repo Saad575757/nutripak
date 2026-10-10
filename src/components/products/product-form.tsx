@@ -11,7 +11,6 @@ import {
   LoaderCircle,
   Plus,
   Save,
-  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { PRODUCT_STATUSES } from "@/lib/constants";
 import {
   productFormSchema,
@@ -354,58 +354,60 @@ export function ProductForm({
         <CardHeader>
           <CardTitle>Images</CardTitle>
           <p className="text-muted-foreground text-sm font-normal">
-            Paste image URLs. A main image plus up to{" "}
-            {MAX_ADDITIONAL_IMAGES} additional images.
+            Upload a main image plus up to {MAX_ADDITIONAL_IMAGES} additional
+            images.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2">
-            <Label htmlFor="mainImageUrl">Main Image URL</Label>
-            <Input
-              id="mainImageUrl"
-              type="url"
-              placeholder="https://…/product-image.png"
-              aria-invalid={!!errors.mainImageUrl}
-              {...register("mainImageUrl")}
+            <Label htmlFor="mainImageUrl">Main Image</Label>
+            <Controller
+              control={control}
+              name="mainImageUrl"
+              render={({ field }) => (
+                <ImageUpload
+                  id="mainImageUrl"
+                  value={field.value}
+                  onChange={field.onChange}
+                  alt="Main product image"
+                />
+              )}
             />
             <FieldError message={errors.mainImageUrl?.message} />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Additional Images</Label>
             {(additionalImages as string[]).map((_, index) => (
-              <div key={index} className="flex items-start gap-2">
-                <div className="grid flex-1 gap-1">
-                  <Input
-                    type="url"
-                    placeholder={`https://…/image-${index + 2}.png`}
-                    aria-label={`Additional image ${index + 1} URL`}
-                    {...register(`additionalImages.${index}` as const)}
-                  />
-                  <FieldError
-                    message={
-                      errors.additionalImages &&
-                      Array.isArray(errors.additionalImages)
-                        ? errors.additionalImages[index]?.message
-                        : undefined
-                    }
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() =>
-                    setValue(
-                      "additionalImages",
-                      (additionalImages as string[]).filter((_, i) => i !== index),
-                      { shouldDirty: true }
-                    )
+              <div key={index} className="grid gap-1">
+                <Controller
+                  control={control}
+                  name={`additionalImages.${index}` as const}
+                  render={({ field }) => (
+                    <ImageUpload
+                      value={field.value}
+                      onChange={field.onChange}
+                      onRemove={() =>
+                        setValue(
+                          "additionalImages",
+                          (additionalImages as string[]).filter(
+                            (_, i) => i !== index
+                          ),
+                          { shouldDirty: true }
+                        )
+                      }
+                      alt={`Additional image ${index + 1}`}
+                    />
+                  )}
+                />
+                <FieldError
+                  message={
+                    errors.additionalImages &&
+                    Array.isArray(errors.additionalImages)
+                      ? errors.additionalImages[index]?.message
+                      : undefined
                   }
-                  aria-label={`Remove additional image ${index + 1}`}
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                </Button>
+                />
               </div>
             ))}
             {additionalImages.length >= MAX_ADDITIONAL_IMAGES ? (
@@ -422,7 +424,7 @@ export function ProductForm({
                   setValue("additionalImages", next, { shouldDirty: true });
                 }}
               >
-                <Plus className="size-4" aria-hidden /> Add image URL
+                <Plus className="size-4" aria-hidden /> Add image
               </Button>
             )}
           </div>

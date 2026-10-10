@@ -17,6 +17,24 @@ export const optionalUrl = z.union([
     ),
 ]);
 
+/**
+ * Images may either be an external http(s) URL (legacy entries) or an internal
+ * uploaded-media path served from `/api/media/[id]`.
+ */
+export const optionalImage = z.union([
+  z.literal(""),
+  z
+    .string()
+    .trim()
+    .max(500, "URL is too long")
+    .refine(
+      (value) =>
+        /^https?:\/\/\S+$/.test(value) ||
+        /^\/api\/media\/[A-Za-z0-9_-]+$/.test(value),
+      "Upload an image or enter a valid image URL"
+    ),
+]);
+
 export const productFormSchema = z.object({
   name: z
     .string()
@@ -59,8 +77,8 @@ export const productFormSchema = z.object({
   productSheetUrl: optionalUrl,
 
   // Media
-  mainImageUrl: optionalUrl,
-  additionalImages: z.array(optionalUrl).max(6, "Up to 6 additional images").default([]),
+  mainImageUrl: optionalImage,
+  additionalImages: z.array(optionalImage).max(6, "Up to 6 additional images").default([]),
 
   status: z.enum(PRODUCT_STATUSES),
 });

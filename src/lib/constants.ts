@@ -77,3 +77,34 @@ export const PRODUCT_STATUS_TONES: Record<ProductStatus, Tone> = {
   ACTIVE: "success",
   INACTIVE: "neutral",
 };
+
+/** Customer account status is stored as free text by the storefront. */
+export function accountStatusTone(status: string): Tone {
+  switch (status.toUpperCase()) {
+    case "ACTIVE":
+      return "success";
+    case "BLOCKED":
+    case "SUSPENDED":
+    case "INACTIVE":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+/** Contact form status is stored as free text by the storefront. */
+export function contactStatusTone(status: string): Tone {
+  switch (status.toUpperCase()) {
+    case "NEW":
+    case "OPEN":
+      return "info";
+    case "IN_PROGRESS":
+    case "PENDING":
+      return "warning";
+    case "RESOLVED":
+    case "CLOSED":
+      return "success";
+    default:
+      return "neutral";
+  }
+}

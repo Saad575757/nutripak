@@ -1,5 +1,6 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import type { DashboardStats } from "./types";
+import type { CustomerRow, DashboardStats, ListResult } from "./types";
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [
@@ -13,6 +14,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     deliveredOrders,
     cancelledOrders,
     codAggregate,
+    totalCustomers,
+    activeCustomers,
+    totalContacts,
+    newContacts,
   ] = await Promise.all([
     prisma.product.count(),
     prisma.product.count({ where: { status: "ACTIVE" } }),
@@ -30,6 +35,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       where: { status: { not: "CANCELLED" } },
       _sum: { total: true },
     }),
+    prisma.customer.count(),
+    prisma.customer.count({ where: { status: "ACTIVE" } }),
+    prisma.contact.count(),
+    prisma.contact.count({ where: { status: "NEW" } }),
   ]);
 
   return {
@@ -43,57 +52,90 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     deliveredOrders,
     cancelledOrders,
     codOrderValue: Number(codAggregate._sum.total ?? 0),
+    totalCustomers,
+    activeCustomers,
+    totalContacts,
+    newContacts,
   };
 }
 
-/** Distinct customers aggregated from orders (basic, no CRM). */
-export interface CustomerSummary {
-  phone: string;
-  name: string;
-  email: string | null;
-  city: string;
-  address: string;
-  orderCount: number;
-  totalValue: number;
-  lastOrderAt: Date;
+export interface CustomerFilters {
+  search?: string;
+  /** Exact account status, e.g. ACTIVE. */
+  status?: string;
+  skip?: number;
+  take?: number;
 }
 
-export async function listCustomers(): Promise<CustomerSummary[]> {
-  // Basic scale: aggregate in memory over indexed columns. Revisit with SQL
-  // grouping if the storefront grows beyond tens of thousands of orders.
-  const orders = await prisma.order.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      customerPhone: true,
-      customerName: true,
-      customerEmail: true,
-      city: true,
-      address: true,
-      total: true,
-      createdAt: true,
-    },
-  });
+/** Lists registered storefront accounts with their order history aggregated in. */
+export async function listCustomerAccounts(
+  filters: CustomerFilters
+): Promise<ListResult<CustomerRow>> {
+  const where: Prisma.CustomerWhereInput = {};
 
-  const byPhone = new Map<string, CustomerSummary>();
-
-  for (const order of orders) {
-    const existing = byPhone.get(order.customerPhone);
-    if (!existing) {
-      byPhone.set(order.customerPhone, {
-        phone: order.customerPhone,
-        name: order.customerName,
-        email: order.customerEmail,
-        city: order.city,
-        address: order.address,
-        orderCount: 1,
-        totalValue: Number(order.total),
-        lastOrderAt: order.createdAt,
-      });
-    } else {
-      existing.orderCount += 1;
-      existing.totalValue += Number(order.total);
-    }
+  if (filters.search) {
+    const term = filters.search.trim();
+    where.OR = [
+      { name: { contains: term, mode: "insensitive" } },
+      { email: { contains: term, mode: "insensitive" } },
+      { phone: { contains: term } },
+    ];
   }
+  if (filters.status) where.status = filters.status;
 
-  return [...byPhone.values()].sort((a, b) => b.totalValue - a.totalValue);
+  const [customers, total] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: filters.skip ?? 0,
+      take: filters.take ?? 10,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+    prisma.customer.count({ where }),
+  ]);
+
+  // Aggregate linked orders in a single grouped query to avoid N+1 lookups.
+  const aggregates = customers.length
+    ? await prisma.order.groupBy({
+        by: ["customerId"],
+        where: { customerId: { in: customers.map((customer) => customer.id) } },
+        _count: { _all: true },
+        _sum: { total: true },
+        _max: { createdAt: true },
+      })
+    : [];
+
+  const byCustomerId = new Map(
+    aggregates.map((row) => [row.customerId, row])
+  );
+
+  return {
+    items: customers.map((customer) => {
+      const aggregate = byCustomerId.get(customer.id);
+      return {
+        ...customer,
+        orderCount: aggregate?._count._all ?? 0,
+        totalSpent: Number(aggregate?._sum.total ?? 0),
+        lastOrderAt: aggregate?._max.createdAt ?? null,
+      };
+    }),
+    total,
+  };
+}
+
+/** Distinct account statuses present in the data, for filter options. */
+export async function listCustomerStatuses(): Promise<string[]> {
+  const rows = await prisma.customer.findMany({
+    distinct: ["status"],
+    select: { status: true },
+    orderBy: { status: "asc" },
+  });
+  return rows.map((row) => row.status);
 }

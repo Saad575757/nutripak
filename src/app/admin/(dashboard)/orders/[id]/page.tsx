@@ -75,7 +75,17 @@ export default async function OrderDetailPage({
         {/* Customer information */}
         <Card>
           <CardHeader>
-            <CardTitle>Customer Information</CardTitle>
+            <CardTitle className="flex items-center justify-between gap-2">
+              Customer Information
+              {order.customer ? (
+                <StatusBadge
+                  label="Registered account"
+                  tone="info"
+                  withDot={false}
+                  className="font-normal"
+                />
+              ) : null}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-3 text-sm">

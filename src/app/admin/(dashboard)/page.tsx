@@ -5,9 +5,11 @@ import {
   Clock,
   Eye,
   Layers,
+  Mail,
   Package,
   RefreshCw,
   ShoppingCart,
+  Users,
   XCircle,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -125,6 +127,20 @@ export default async function DashboardPage({
             value={String(stats.cancelledOrders)}
             supporting="Not completed"
             iconClassName="bg-danger-soft text-danger-text"
+          />
+          <StatCard
+            icon={Users}
+            label="Customers"
+            value={String(stats.totalCustomers)}
+            supporting={`${stats.activeCustomers} active accounts`}
+            iconClassName="bg-info-soft text-info-text"
+          />
+          <StatCard
+            icon={Mail}
+            label="Messages"
+            value={String(stats.totalContacts)}
+            supporting={`${stats.newContacts} new`}
+            iconClassName="bg-warning-soft text-warning-text"
           />
         </div>
       </section>

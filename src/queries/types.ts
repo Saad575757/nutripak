@@ -42,4 +42,35 @@ export interface DashboardStats {
   cancelledOrders: number;
   /** Sum of all COD order totals, excluding cancelled orders. */
   codOrderValue: number;
+  /** Registered storefront customer accounts. */
+  totalCustomers: number;
+  activeCustomers: number;
+  /** Contact form submissions from the storefront. */
+  totalContacts: number;
+  newContacts: number;
 }
+
+/** A registered storefront account with its order history aggregated in. */
+export interface CustomerRow {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  createdAt: Date;
+  orderCount: number;
+  totalSpent: number;
+  lastOrderAt: Date | null;
+}
+
+export type ContactRow = Prisma.ContactGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    email: true;
+    topic: true;
+    message: true;
+    status: true;
+    createdAt: true;
+  };
+}>;

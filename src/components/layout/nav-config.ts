@@ -5,6 +5,7 @@ import {
   ShoppingCart,
   Users,
   Boxes,
+  Mail,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Inventory", href: "/admin/inventory", icon: Boxes },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { label: "Customers", href: "/admin/customers", icon: Users },
+  { label: "Messages", href: "/admin/contacts", icon: Mail },
   { label: "Settings", href: "/admin/settings", icon: Settings, exact: true },
 ];
 
@@ -32,6 +34,7 @@ const SINGULAR_LABELS: Record<string, string> = {
   Inventory: "Inventory",
   Orders: "Order",
   Customers: "Customer",
+  Messages: "Message",
   Settings: "Setting",
 };
 

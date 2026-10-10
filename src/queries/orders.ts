@@ -89,6 +89,9 @@ export async function getOrderDetail(id: string) {
       items: {
         orderBy: { productName: "asc" },
       },
+      customer: {
+        select: { id: true, name: true, email: true },
+      },
     },
   });
 }

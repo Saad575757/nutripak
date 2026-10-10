@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { categoryFormSchema } from "@/validations/category";
 
 export interface CategoryDialogRow {
@@ -69,6 +70,7 @@ export function CategoryDialog({
   });
 
   const isActive = watch("isActive");
+  const imageUrl = watch("imageUrl");
 
   // Reset the form each time the dialog opens for a different target.
   useEffect(() => {
@@ -159,13 +161,14 @@ export function CategoryDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="category-image">Image URL</Label>
-            <Input
+            <Label htmlFor="category-image">Image</Label>
+            <ImageUpload
               id="category-image"
-              type="url"
-              placeholder="https://…/category.png"
-              aria-invalid={!!errors.imageUrl}
-              {...register("imageUrl")}
+              value={imageUrl}
+              onChange={(url) =>
+                setValue("imageUrl", url, { shouldDirty: true })
+              }
+              alt={category?.name ?? "Category image"}
             />
             {errors.imageUrl ? (
               <p className="text-destructive text-xs" role="alert">
